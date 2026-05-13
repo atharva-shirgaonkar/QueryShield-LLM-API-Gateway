@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.token_counter import count_tokens
+from app.core.usage_service import get_total_tokens_used, has_exceeded_limit
 from app.dependencies import get_current_user
 from app.models import Usage, User
 from app.schemas.query import QueryRequest, QueryResponse
@@ -23,6 +24,13 @@ async def query_openai(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> QueryResponse:
+    total_used = await get_total_tokens_used(current_user.id, db)
+    if has_exceeded_limit(current_user, total_used, settings):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Token limit reached for your tier. Please upgrade to pro.",
+        )
+
     prompt_tokens = count_tokens(payload.prompt, OPENAI_MODEL)
 
     try:
