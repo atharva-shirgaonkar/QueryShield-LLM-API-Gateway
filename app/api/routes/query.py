@@ -6,6 +6,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import get_cache_key, get_cached_response, set_cached_response
+from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.redis_client import get_redis
@@ -18,6 +19,7 @@ from app.schemas.query import QueryRequest, QueryResponse
 
 router = APIRouter()
 client = AsyncOpenAI(api_key=settings.openai_api_key)
+openai_circuit_breaker = CircuitBreaker()
 OPENAI_MODEL = "gpt-3.5-turbo"
 
 
@@ -44,10 +46,17 @@ async def query_openai(
     prompt_tokens = count_tokens(payload.prompt, OPENAI_MODEL)
 
     try:
-        completion = await client.chat.completions.create(
-            model=OPENAI_MODEL,
-            messages=[{"role": "user", "content": payload.prompt}],
+        completion = await openai_circuit_breaker.call(
+            client.chat.completions.create(
+                model=OPENAI_MODEL,
+                messages=[{"role": "user", "content": payload.prompt}],
+            )
         )
+    except CircuitBreakerOpenError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Service temporarily unavailable. Please try again shortly.",
+        ) from exc
     except AuthenticationError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
