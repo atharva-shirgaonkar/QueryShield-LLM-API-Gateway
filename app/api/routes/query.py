@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from openai import AsyncOpenAI, AuthenticationError, OpenAIError
 
 from app.core.config import settings
+from app.core.token_counter import count_tokens
 from app.dependencies import get_current_user
 from app.models import User
 from app.schemas.query import QueryRequest, QueryResponse
@@ -19,6 +20,8 @@ async def query_openai(
     payload: QueryRequest,
     current_user: User = Depends(get_current_user),
 ) -> QueryResponse:
+    prompt_tokens = count_tokens(payload.prompt, OPENAI_MODEL)
+
     try:
         completion = await client.chat.completions.create(
             model=OPENAI_MODEL,
@@ -36,4 +39,19 @@ async def query_openai(
         ) from exc
 
     reply = completion.choices[0].message.content or ""
-    return QueryResponse(response=reply, model=completion.model or OPENAI_MODEL)
+    model = completion.model or OPENAI_MODEL
+    completion_tokens = count_tokens(reply, model)
+    total_tokens = prompt_tokens + completion_tokens
+
+    if completion.usage is not None:
+        prompt_tokens = completion.usage.prompt_tokens
+        completion_tokens = completion.usage.completion_tokens
+        total_tokens = completion.usage.total_tokens
+
+    return QueryResponse(
+        response=reply,
+        model=model,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+    )
