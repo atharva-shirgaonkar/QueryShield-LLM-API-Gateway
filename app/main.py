@@ -1,6 +1,6 @@
 from fastapi import Depends, FastAPI
 
-from app.api.routes import auth_router
+from app.api.routes import auth_router, query_router
 from app.core.config import settings
 from app.dependencies import get_current_user
 from app.models import User
@@ -13,6 +13,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(query_router, prefix="/query", tags=["query"])
 
 @app.get("/health")
 async def health():
