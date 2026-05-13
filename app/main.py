@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app.api.routes import auth_router
 from app.core.config import settings
+from app.dependencies import get_current_user
+from app.models import User
+from app.schemas.auth import UserResponse
 
 app = FastAPI(
     title="QueryShield",
@@ -19,3 +22,10 @@ async def health():
         "free_tier_limit": settings.free_tier_daily_tokens,
         "pro_tier_limit": settings.pro_tier_daily_tokens
     }
+
+
+@app.get("/auth/me", response_model=UserResponse)
+async def read_current_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    return current_user
