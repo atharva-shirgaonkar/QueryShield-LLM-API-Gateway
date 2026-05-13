@@ -1,4 +1,6 @@
 from fastapi import FastAPI
+
+from app.api.routes import auth_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -6,6 +8,8 @@ app = FastAPI(
     description="Smart API gateway with LLM cost control",
     version="0.1.0"
 )
+
+app.include_router(auth_router, prefix="/auth", tags=["auth"])
 
 @app.get("/health")
 async def health():
