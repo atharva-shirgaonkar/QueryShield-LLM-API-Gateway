@@ -2,10 +2,13 @@
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from openai import AsyncOpenAI, AuthenticationError, OpenAIError
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import get_cache_key, get_cached_response, set_cached_response
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.redis_client import get_redis
 from app.core.token_counter import count_tokens
 from app.core.usage_service import get_total_tokens_used, has_exceeded_limit
 from app.dependencies import get_current_user
@@ -23,6 +26,7 @@ async def query_openai(
     payload: QueryRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
 ) -> QueryResponse:
     total_used = await get_total_tokens_used(current_user.id, db)
     if has_exceeded_limit(current_user, total_used, settings):
@@ -30,6 +34,12 @@ async def query_openai(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail="Token limit reached for your tier. Please upgrade to pro.",
         )
+
+    cache_key = get_cache_key(payload.prompt)
+    cached_response = await get_cached_response(cache_key, redis)
+    if cached_response is not None:
+        cached_response["cached"] = True
+        return QueryResponse(**cached_response)
 
     prompt_tokens = count_tokens(payload.prompt, OPENAI_MODEL)
 
@@ -70,10 +80,14 @@ async def query_openai(
     db.add(usage)
     await db.commit()
 
-    return QueryResponse(
+    response = QueryResponse(
         response=reply,
         model=model,
         prompt_tokens=prompt_tokens,
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,
+        cached=False,
     )
+    await set_cached_response(cache_key, response.model_dump(exclude={"cached"}), redis)
+
+    return response
