@@ -2,6 +2,8 @@
 Authentication helpers for password hashing and JWT access tokens.
 """
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -13,6 +15,8 @@ from app.core.config import settings
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+API_KEY_PREFIX = "qs_"
+API_KEY_RANDOM_BYTES = 32
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -59,3 +63,13 @@ def decode_access_token(token: str) -> dict[str, Any]:
         raise JWTError("Access token is missing a subject")
 
     return payload
+
+
+def generate_api_key() -> str:
+    """Generate a secure raw API key to show once to the user."""
+    return f"{API_KEY_PREFIX}{secrets.token_hex(API_KEY_RANDOM_BYTES)}"
+
+
+def hash_api_key(api_key: str) -> str:
+    """Return the SHA256 hash stored for API key lookup."""
+    return hashlib.sha256(api_key.encode("utf-8")).hexdigest()

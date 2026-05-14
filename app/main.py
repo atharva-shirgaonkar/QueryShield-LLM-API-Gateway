@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from app.api.routes import auth_router, query_router
+from app.api.routes import auth_router, keys_router, query_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -10,6 +10,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
+app.include_router(keys_router, prefix="/keys", tags=["keys"])
 app.include_router(query_router, prefix="/query", tags=["query"])
 
 @app.get("/health")
