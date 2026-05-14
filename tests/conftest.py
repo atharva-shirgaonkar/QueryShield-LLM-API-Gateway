@@ -19,6 +19,8 @@ from app.models import User  # noqa: E402
 
 TEST_USER_EMAIL = "test@example.com"
 TEST_USER_PASSWORD = "CorrectHorse123"
+SUPERUSER_EMAIL = "admin@example.com"
+SUPERUSER_PASSWORD = "AdminPassword123"
 
 test_engine = create_async_engine(
     "sqlite+aiosqlite://",
@@ -76,3 +78,16 @@ async def test_user(db_session: AsyncSession) -> User:
 @pytest_asyncio.fixture
 async def auth_token(test_user: User) -> str:
     return create_access_token(subject=test_user.id)
+
+
+@pytest_asyncio.fixture
+async def superuser_token(db_session: AsyncSession) -> str:
+    user = User(
+        email=SUPERUSER_EMAIL,
+        hashed_password=get_password_hash(SUPERUSER_PASSWORD),
+        is_superuser=True,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return create_access_token(subject=user.id)
