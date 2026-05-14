@@ -1,7 +1,9 @@
 from pydantic import AliasChoices, Field
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env")
+
     database_url: str
     redis_url: str
     openai_api_key: str
@@ -14,8 +16,5 @@ class Settings(BaseSettings):
         default=50000,
         validation_alias=AliasChoices("PRO_TOKEN_LIMIT", "PRO_TIER_DAILY_TOKENS"),
     )
-
-    class Config:
-        env_file = ".env"
 
 settings = Settings()
