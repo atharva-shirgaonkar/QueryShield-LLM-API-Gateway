@@ -40,6 +40,18 @@ async def query_openai(
     cache_key = get_cache_key(payload.prompt)
     cached_response = await get_cached_response(cache_key, redis)
     if cached_response is not None:
+        usage = Usage(
+            user_id=current_user.id,
+            prompt=payload.prompt,
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+            model=cached_response["model"],
+            cached=True,
+        )
+        db.add(usage)
+        await db.commit()
+
         cached_response["cached"] = True
         return QueryResponse(**cached_response)
 
@@ -85,6 +97,7 @@ async def query_openai(
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,
         model=model,
+        cached=False,
     )
     db.add(usage)
     await db.commit()
