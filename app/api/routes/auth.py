@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash, verify_password
+from app.dependencies import get_current_user
 from app.models import User
 from app.schemas.auth import LoginRequest, RegisterRequest, TokenResponse, UserResponse
 
@@ -50,3 +51,9 @@ async def login(
     access_token = create_access_token(subject=user.id)
     return TokenResponse(access_token=access_token)
 
+
+@router.get("/me", response_model=UserResponse)
+async def read_current_user(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    return current_user
