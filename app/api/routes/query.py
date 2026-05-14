@@ -43,9 +43,9 @@ async def query_openai(
         usage = Usage(
             user_id=current_user.id,
             prompt=payload.prompt,
-            prompt_tokens=0,
-            completion_tokens=0,
-            total_tokens=0,
+            prompt_tokens=cached_response["prompt_tokens"],
+            completion_tokens=cached_response["completion_tokens"],
+            total_tokens=cached_response["total_tokens"],
             model=cached_response["model"],
             cached=True,
         )

@@ -26,7 +26,11 @@ async def read_admin_stats(
         )
 
     total_users = await db.scalar(select(func.count()).select_from(User))
-    total_tokens = await db.scalar(select(func.coalesce(func.sum(Usage.total_tokens), 0)))
+    total_tokens = await db.scalar(
+        select(func.coalesce(func.sum(Usage.total_tokens), 0)).where(
+            Usage.cached.is_(False)
+        )
+    )
     total_queries = await db.scalar(select(func.count()).select_from(Usage))
     cache_hits = await db.scalar(
         select(func.count()).select_from(Usage).where(Usage.cached.is_(True))

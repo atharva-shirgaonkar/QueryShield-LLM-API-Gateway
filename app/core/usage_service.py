@@ -11,7 +11,8 @@ async def get_total_tokens_used(user_id: int, db: AsyncSession) -> int:
     """Return all tokens spent by a user across recorded requests."""
     total_tokens = await db.scalar(
         select(func.coalesce(func.sum(Usage.total_tokens), 0)).where(
-            Usage.user_id == user_id
+            Usage.user_id == user_id,
+            Usage.cached.is_(False),
         )
     )
     return int(total_tokens or 0)
