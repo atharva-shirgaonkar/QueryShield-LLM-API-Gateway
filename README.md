@@ -198,6 +198,26 @@ queryshield/
 
 ---
 
+## Deployment
+
+QueryShield is configured for one-click deployment on Render.
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy)
+
+### Steps
+
+1. Fork this repo
+2. Go to render.com and sign up with GitHub
+3. Click **New Web Service** and connect your repo
+4. Render auto-detects `render.yaml` and configures everything
+5. Add your `OPENAI_API_KEY` and `SECRET_KEY` in the Environment tab
+6. Click Deploy
+
+> Note: Free tier spins down after 15 minutes of inactivity.
+> First request after inactivity takes ~30 seconds to wake up.
+
+---
+
 ## Author
 
 **Atharva Shirgaonkar**
