@@ -9,7 +9,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
 ![Redis](https://img.shields.io/badge/Redis-7-red)
 ![Docker](https://img.shields.io/badge/Docker-compose-blue)
-![Tests](https://img.shields.io/badge/Tests-20%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-34%20passing-brightgreen)
 
 ---
 
@@ -73,7 +73,7 @@ Return Response
 - **Tier Enforcement** — free and pro users have separate token budgets
 - **Redis Caching** — SHA256 prompt hashing with 1 hour TTL
 - **Circuit Breaker** — CLOSED / OPEN / HALF_OPEN state machine protects against OpenAI failures
-- **20 Tests** — full coverage across auth, query, and API key flows
+- **34 Tests** — full coverage across auth, query, API key, usage, admin, and middleware flows
 
 ---
 
@@ -161,6 +161,33 @@ PRO_TOKEN_LIMIT=100000
 
 ---
 
+## Observability
+
+Every request through QueryShield is fully traced:
+
+- Unique `X-Request-ID` header on every response
+- Structured JSON logs with timestamp, level, request_id, method, path, status_code, duration_ms
+- Cache hit/miss logged on every query
+- Token counts logged after every OpenAI call
+- Circuit breaker state changes logged automatically
+- Startup and shutdown events logged
+
+Example log entry:
+
+```json
+{
+  "timestamp": "2026-05-15T10:00:00Z",
+  "level": "INFO",
+  "request_id": "uuid-here",
+  "method": "POST",
+  "path": "/query",
+  "status_code": 200,
+  "duration_ms": 143
+}
+```
+
+---
+
 ## Project Structure
 
 ```text
@@ -190,7 +217,7 @@ queryshield/
 │       ├── query.py         # /query endpoint
 │       └── keys.py          # /keys endpoints
 ├── alembic/                 # Database migrations
-├── tests/                   # 20 passing tests
+├── tests/                   # 34 passing tests
 ├── docker-compose.yml       # Postgres + Redis
 ├── requirements.txt
 └── .env.example

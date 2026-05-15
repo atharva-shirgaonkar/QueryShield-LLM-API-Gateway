@@ -12,6 +12,7 @@ os.environ["OPENAI_API_KEY"] = "test-openai-api-key"
 os.environ["SECRET_KEY"] = "test-secret-key"
 
 from app.core.database import Base, get_db  # noqa: E402
+from app.core.middleware import RequestLoggingMiddleware  # noqa: E402
 from app.core.security import create_access_token, get_password_hash  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
@@ -55,6 +56,9 @@ async def test_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, N
         yield db_session
 
     app.dependency_overrides[get_db] = override_get_db
+    assert any(
+        middleware.cls is RequestLoggingMiddleware for middleware in app.user_middleware
+    )
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
