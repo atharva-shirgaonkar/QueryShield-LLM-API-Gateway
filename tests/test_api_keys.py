@@ -32,6 +32,16 @@ def api_key_test_dependencies(monkeypatch):
 
     app.dependency_overrides[get_redis] = override_get_redis
     monkeypatch.setattr(query_routes.settings, "free_tier_daily_tokens", 1000)
+    monkeypatch.setattr(
+        query_routes,
+        "find_semantic_match",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        query_routes,
+        "store_semantic_cache",
+        AsyncMock(return_value=None),
+    )
     query_routes.openai_circuit_breaker = CircuitBreaker()
 
     yield fake_redis
@@ -192,6 +202,7 @@ async def test_query_with_valid_api_key_returns_200(
         "completion_tokens": 7,
         "total_tokens": 12,
         "cached": False,
+        "semantic_cached": False,
     }
 
 

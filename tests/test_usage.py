@@ -33,6 +33,16 @@ def usage_test_dependencies(monkeypatch):
     app.dependency_overrides[get_redis] = override_get_redis
     monkeypatch.setattr(usage_routes.settings, "free_tier_daily_tokens", 1000)
     monkeypatch.setattr(query_routes.settings, "free_tier_daily_tokens", 1000)
+    monkeypatch.setattr(
+        query_routes,
+        "find_semantic_match",
+        AsyncMock(return_value=None),
+    )
+    monkeypatch.setattr(
+        query_routes,
+        "store_semantic_cache",
+        AsyncMock(return_value=None),
+    )
     query_routes.openai_circuit_breaker = CircuitBreaker()
 
     yield fake_redis

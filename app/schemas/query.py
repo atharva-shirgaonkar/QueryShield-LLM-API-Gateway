@@ -14,3 +14,4 @@ class QueryResponse(BaseModel):
     completion_tokens: int
     total_tokens: int
     cached: bool
+    semantic_cached: bool

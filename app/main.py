@@ -4,6 +4,7 @@ from fastapi import FastAPI
 
 from app.api.routes import admin_router, auth_router, keys_router, query_router, usage_router
 from app.core.config import settings
+from app.core.embeddings import preload_embedding_model
 from app.core.logger import get_logger
 from app.core.middleware import RequestLoggingMiddleware
 
@@ -13,6 +14,7 @@ logger = get_logger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    preload_embedding_model()
     logger.info("QueryShield started successfully")
     yield
     logger.info("QueryShield shutting down")

@@ -11,6 +11,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.logger import get_logger
 from app.core.redis_client import get_redis
+from app.core.semantic_cache import find_semantic_match, store_semantic_cache
 from app.core.token_counter import count_tokens
 from app.core.usage_service import get_total_tokens_used, has_exceeded_limit
 from app.dependencies import get_current_user
@@ -116,6 +117,7 @@ async def query_openai(
         await db.commit()
 
         cached_response["cached"] = True
+        cached_response["semantic_cached"] = False
         return QueryResponse(**cached_response)
 
     logger.info(
@@ -125,6 +127,45 @@ async def query_openai(
             "user_id": current_user.id,
             "tier": tier,
             "cache_key": cache_key,
+        },
+    )
+
+    semantic_response = await find_semantic_match(payload.prompt, redis)
+    if semantic_response is not None:
+        request.state.cached = True
+        request.state.token_count = semantic_response["total_tokens"]
+
+        logger.info(
+            "Semantic cache hit",
+            extra={
+                "request_id": getattr(request.state, "request_id", None),
+                "user_id": current_user.id,
+                "tier": tier,
+            },
+        )
+
+        usage = Usage(
+            user_id=current_user.id,
+            prompt=payload.prompt,
+            prompt_tokens=semantic_response["prompt_tokens"],
+            completion_tokens=semantic_response["completion_tokens"],
+            total_tokens=semantic_response["total_tokens"],
+            model=semantic_response["model"],
+            cached=True,
+        )
+        db.add(usage)
+        await db.commit()
+
+        semantic_response["cached"] = False
+        semantic_response["semantic_cached"] = True
+        return QueryResponse(**semantic_response)
+
+    logger.info(
+        "Semantic cache miss",
+        extra={
+            "request_id": getattr(request.state, "request_id", None),
+            "user_id": current_user.id,
+            "tier": tier,
         },
     )
 
@@ -215,7 +256,10 @@ async def query_openai(
         completion_tokens=completion_tokens,
         total_tokens=total_tokens,
         cached=False,
+        semantic_cached=False,
     )
-    await set_cached_response(cache_key, response.model_dump(exclude={"cached"}), redis)
+    cache_payload = response.model_dump(exclude={"cached", "semantic_cached"})
+    await set_cached_response(cache_key, cache_payload, redis)
+    await store_semantic_cache(payload.prompt, cache_payload, redis)
 
     return response
