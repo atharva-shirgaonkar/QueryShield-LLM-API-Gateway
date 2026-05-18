@@ -9,7 +9,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
 ![Redis](https://img.shields.io/badge/Redis-7-red)
 ![Docker](https://img.shields.io/badge/Docker-compose-blue)
-![Tests](https://img.shields.io/badge/Tests-34%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-44%20passing-brightgreen)
 
 ---
 
@@ -73,7 +73,7 @@ Return Response
 - **Tier Enforcement** — free and pro users have separate token budgets
 - **Redis Caching** — SHA256 prompt hashing with 1 hour TTL
 - **Circuit Breaker** — CLOSED / OPEN / HALF_OPEN state machine protects against OpenAI failures
-- **34 Tests** — full coverage across auth, query, API key, usage, admin, and middleware flows
+- **44 Tests** — full coverage across auth, query, API key, usage, admin, middleware, and semantic cache flows
 
 ---
 
@@ -217,7 +217,7 @@ queryshield/
 │       ├── query.py         # /query endpoint
 │       └── keys.py          # /keys endpoints
 ├── alembic/                 # Database migrations
-├── tests/                   # 34 passing tests
+├── tests/                   # 44 passing tests
 ├── docker-compose.yml       # Postgres + Redis
 ├── requirements.txt
 └── .env.example
