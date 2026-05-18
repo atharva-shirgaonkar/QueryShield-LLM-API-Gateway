@@ -1,6 +1,7 @@
 """OpenAI proxy API routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from openai import AsyncOpenAI, AuthenticationError, OpenAIError
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +11,11 @@ from app.core.circuit_breaker import CircuitBreaker, CircuitBreakerOpenError
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.logger import get_logger
+from app.core.rate_limiter import (
+    RATE_LIMIT_WINDOW,
+    check_rate_limit,
+    get_rate_limit_key,
+)
 from app.core.redis_client import get_redis
 from app.core.semantic_cache import find_semantic_match, store_semantic_cache
 from app.core.token_counter import count_tokens
@@ -38,6 +44,29 @@ def _tier_value(current_user: User) -> str:
     )
 
 
+def _remaining_requests(current_count: int, limit: int) -> int:
+    return max(limit - current_count, 0)
+
+
+def _set_rate_limit_headers(
+    response: Response,
+    *,
+    limit: int,
+    remaining: int,
+    reset: int,
+) -> None:
+    response.headers["X-RateLimit-Limit"] = str(limit)
+    response.headers["X-RateLimit-Remaining"] = str(remaining)
+    response.headers["X-RateLimit-Reset"] = str(reset)
+
+
+async def _get_rate_limit_reset(user_id: int, redis) -> int:
+    ttl = await redis.ttl(get_rate_limit_key(user_id))
+    if ttl is None or ttl < 0:
+        return RATE_LIMIT_WINDOW
+    return int(ttl)
+
+
 def _log_circuit_breaker_state_change(
     *,
     request: Request,
@@ -64,13 +93,38 @@ def _log_circuit_breaker_state_change(
 @router.post("", response_model=QueryResponse)
 async def query_openai(
     request: Request,
+    http_response: Response,
     payload: QueryRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
-) -> QueryResponse:
+) -> QueryResponse | JSONResponse:
     tier = _tier_value(current_user)
     request.state.user_id = current_user.id
+
+    is_allowed, current_count, limit = await check_rate_limit(current_user, redis)
+    rate_limit_remaining = _remaining_requests(current_count, limit)
+    rate_limit_reset = await _get_rate_limit_reset(current_user.id, redis)
+    _set_rate_limit_headers(
+        http_response,
+        limit=limit,
+        remaining=rate_limit_remaining,
+        reset=rate_limit_reset,
+    )
+
+    if not is_allowed:
+        return JSONResponse(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            content={
+                "detail": "Rate limit exceeded. Try again in 60 seconds.",
+                "retry_after": RATE_LIMIT_WINDOW,
+            },
+            headers={
+                "X-RateLimit-Limit": str(limit),
+                "X-RateLimit-Remaining": str(rate_limit_remaining),
+                "X-RateLimit-Reset": str(rate_limit_reset),
+            },
+        )
 
     logger.info(
         "Query request received",
@@ -118,6 +172,7 @@ async def query_openai(
 
         cached_response["cached"] = True
         cached_response["semantic_cached"] = False
+        cached_response["rate_limit_remaining"] = rate_limit_remaining
         return QueryResponse(**cached_response)
 
     logger.info(
@@ -158,6 +213,7 @@ async def query_openai(
 
         semantic_response["cached"] = False
         semantic_response["semantic_cached"] = True
+        semantic_response["rate_limit_remaining"] = rate_limit_remaining
         return QueryResponse(**semantic_response)
 
     logger.info(
@@ -257,8 +313,11 @@ async def query_openai(
         total_tokens=total_tokens,
         cached=False,
         semantic_cached=False,
+        rate_limit_remaining=rate_limit_remaining,
     )
-    cache_payload = response.model_dump(exclude={"cached", "semantic_cached"})
+    cache_payload = response.model_dump(
+        exclude={"cached", "semantic_cached", "rate_limit_remaining"}
+    )
     await set_cached_response(cache_key, cache_payload, redis)
     await store_semantic_cache(payload.prompt, cache_payload, redis)
 

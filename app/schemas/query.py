@@ -15,3 +15,4 @@ class QueryResponse(BaseModel):
     total_tokens: int
     cached: bool
     semantic_cached: bool
+    rate_limit_remaining: int
