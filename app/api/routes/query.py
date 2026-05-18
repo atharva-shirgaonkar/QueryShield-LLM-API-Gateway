@@ -120,6 +120,7 @@ async def query_openai(
                 "retry_after": RATE_LIMIT_WINDOW,
             },
             headers={
+                "Retry-After": str(RATE_LIMIT_WINDOW),
                 "X-RateLimit-Limit": str(limit),
                 "X-RateLimit-Remaining": str(rate_limit_remaining),
                 "X-RateLimit-Reset": str(rate_limit_reset),

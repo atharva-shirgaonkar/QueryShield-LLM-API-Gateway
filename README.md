@@ -9,7 +9,7 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)
 ![Redis](https://img.shields.io/badge/Redis-7-red)
 ![Docker](https://img.shields.io/badge/Docker-compose-blue)
-![Tests](https://img.shields.io/badge/Tests-44%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/Tests-51%20passing-brightgreen)
 
 ---
 
@@ -73,7 +73,7 @@ Return Response
 - **Tier Enforcement** — free and pro users have separate token budgets
 - **Redis Caching** — SHA256 prompt hashing with 1 hour TTL
 - **Circuit Breaker** — CLOSED / OPEN / HALF_OPEN state machine protects against OpenAI failures
-- **44 Tests** — full coverage across auth, query, API key, usage, admin, middleware, and semantic cache flows
+- **51 Tests** — full coverage across auth, query, API key, usage, admin, middleware, semantic cache, and rate limit flows
 
 ---
 
@@ -188,6 +188,25 @@ Example log entry:
 
 ---
 
+## Rate Limiting
+
+QueryShield enforces per-user rate limits using a Redis
+sliding window counter.
+
+| Tier | Requests per minute |
+|---|---|
+| Free | 10 |
+| Pro | 60 |
+
+Exceeded requests return `429` with a `Retry-After` header.
+Every response includes:
+
+- `X-RateLimit-Limit` — your tier's limit
+- `X-RateLimit-Remaining` — requests left this window
+- `X-RateLimit-Reset` — seconds until window resets
+
+---
+
 ## Project Structure
 
 ```text
@@ -217,7 +236,7 @@ queryshield/
 │       ├── query.py         # /query endpoint
 │       └── keys.py          # /keys endpoints
 ├── alembic/                 # Database migrations
-├── tests/                   # 44 passing tests
+├── tests/                   # 51 passing tests
 ├── docker-compose.yml       # Postgres + Redis
 ├── requirements.txt
 └── .env.example
