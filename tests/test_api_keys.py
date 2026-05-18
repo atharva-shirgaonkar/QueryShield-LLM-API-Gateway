@@ -22,6 +22,16 @@ class FakeRedis:
         self.store[key] = value
         return True
 
+    async def incr(self, key: str) -> int:
+        self.store[key] = int(self.store.get(key, 0)) + 1
+        return int(self.store[key])
+
+    async def expire(self, key: str, seconds: int) -> bool:
+        return True
+
+    async def ttl(self, key: str) -> int:
+        return 60
+
 
 @pytest.fixture(autouse=True)
 def api_key_test_dependencies(monkeypatch):
@@ -203,6 +213,7 @@ async def test_query_with_valid_api_key_returns_200(
         "total_tokens": 12,
         "cached": False,
         "semantic_cached": False,
+        "rate_limit_remaining": 9,
     }
 
 

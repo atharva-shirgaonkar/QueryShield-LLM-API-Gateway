@@ -22,6 +22,16 @@ class FakeRedis:
         self.store[key] = value
         return True
 
+    async def incr(self, key: str) -> int:
+        self.store[key] = int(self.store.get(key, 0)) + 1
+        return int(self.store[key])
+
+    async def expire(self, key: str, seconds: int) -> bool:
+        return True
+
+    async def ttl(self, key: str) -> int:
+        return 60
+
 
 @pytest.fixture(autouse=True)
 def usage_test_dependencies(monkeypatch):
