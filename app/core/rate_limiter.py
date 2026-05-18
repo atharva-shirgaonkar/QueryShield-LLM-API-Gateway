@@ -14,7 +14,8 @@ def get_rate_limit_key(user_id: int) -> str:
 
 
 def _get_user_limit(user: User) -> int:
-    return RATE_LIMIT_PRO if user.tier == UserTier.PRO else RATE_LIMIT_FREE
+    tier = user.tier.value if hasattr(user.tier, "value") else str(user.tier)
+    return RATE_LIMIT_PRO if tier == UserTier.PRO.value else RATE_LIMIT_FREE
 
 
 async def check_rate_limit(user: User, redis) -> tuple[bool, int, int]:
